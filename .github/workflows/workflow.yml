@@ -1,0 +1,62 @@
+name: cicd-demo
+
+on:
+  push:
+    branches:
+      - '*'
+
+env:
+  OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+  OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+  OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+  OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+  OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+
+jobs:
+  build-job:
+    name: Build Job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: oracle
+          java-version: 17
+
+      - name: Build with Maven
+        run: mvn clean package
+
+      - name: Log into OCIR
+        uses: oracle-actions/login-ocir@v1.2.1
+        with:
+          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
+
+      - name: Docker Build
+        run: |
+          docker build -t fra.ocir.io/frol67eoawud/kolokvij/hello-world-app:latest .
+
+      - name: Docker Push
+        run: |
+          docker push fra.ocir.io/frol67eoawud/kolokvij/hello-world-app:latest
+
+  deploy-job:
+    name: Deploy Job
+    needs: build-job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.5.0
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
+
+      - name: Deploy to Kubernetes
+        run: kubectl apply -f hwapp.yaml -n frol67eoawud
+
