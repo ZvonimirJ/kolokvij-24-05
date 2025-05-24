@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hwapp
+  namespace: frol67eoawud
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hwapp
+  template:
+    metadata:
+      labels:
+        app: hwapp
+    spec:
+      containers:
+        - name: hwapp
+          image: fra.ocir.io/frol67eoawud/kolokvij/hello-world-app:latest
+          imagePullPolicy: Always
+          ports:
+            - name: hwapp
+              containerPort: 8080
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hwapp-lb
+  namespace: frol67eoawud
+  labels:
+    app: hwapp
+  annotations:
+    service.beta.kubernetes.io/oci-load-balancer-shape: "flexible"
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: "10"
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: "10"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8080
+  selector:
+    app: hwapp
+
